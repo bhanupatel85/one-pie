@@ -15,7 +15,7 @@ class GeminiService {
     }
   }
 
-  public async startChat() {
+  public async startChat(isThinkingMode: boolean = false) {
     if (!this.ai) return;
 
     // Create a context string from the product list to ground the AI
@@ -38,16 +38,28 @@ class GeminiService {
       3. Keep responses concise (under 50 words unless asked for details).
       4. If asked about prices, always quote the specific price from the list in Rupees (₹).
       5. We specialize in Anime and Marvel cases.
+      ${isThinkingMode ? '6. You are in "Deep Thinking Mode". You can handle complex queries, detailed comparisons, and reasoning tasks. Take your time to provide the best answer.' : ''}
       
       User is asking for help. Be proactive!
     `;
 
+    const model = isThinkingMode ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
+
+    const config: any = {
+      systemInstruction: systemInstruction,
+    };
+
+    if (isThinkingMode) {
+      // Use Thinking Mode for complex queries
+      config.thinkingConfig = { thinkingBudget: 32768 };
+      // Note: maxOutputTokens should not be set when thinkingBudget is used to avoid cutting off reasoning
+    } else {
+      config.temperature = 0.7;
+    }
+
     this.chatSession = this.ai.chats.create({
-      model: 'gemini-3-flash-preview',
-      config: {
-        systemInstruction: systemInstruction,
-        temperature: 0.7,
-      },
+      model: model,
+      config: config,
     });
   }
 

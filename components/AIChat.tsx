@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, Send, X, Sparkles, Loader } from 'lucide-react';
+import { MessageCircle, Send, X, Sparkles, Loader, Brain } from 'lucide-react';
 import { geminiService } from '../services/geminiService';
 import { ChatMessage } from '../types';
 
@@ -8,12 +8,13 @@ export const AIChat: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isThinkingMode, setIsThinkingMode] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       // Initialize chat when opened first time
-      geminiService.startChat().then(() => {
+      geminiService.startChat(isThinkingMode).then(() => {
         setMessages([{
           role: 'model',
           text: "Hey! I'm Reddy 🤖. Looking for a Naruto case or maybe something Spidey-themed? Ask me anything!"
@@ -25,6 +26,26 @@ export const AIChat: React.FC = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const handleToggleThinking = async () => {
+    const newMode = !isThinkingMode;
+    setIsThinkingMode(newMode);
+    setLoading(true);
+    
+    // Re-initialize chat with new mode
+    await geminiService.startChat(newMode);
+    
+    setMessages(prev => [
+      ...prev,
+      {
+        role: 'model',
+        text: newMode 
+          ? "🧠 Deep Thinking Mode activated! I can now handle complex queries and comparisons." 
+          : "⚡ Back to Flash mode for quick, snappy responses."
+      }
+    ]);
+    setLoading(false);
+  };
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
@@ -70,12 +91,22 @@ export const AIChat: React.FC = () => {
                 <p className="text-xs text-brand-neon">Online</p>
               </div>
             </div>
-            <button 
-              onClick={() => setIsOpen(false)}
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleToggleThinking}
+                className={`p-2 rounded-lg transition-all ${isThinkingMode ? 'text-brand-neon bg-brand-neon/10 ring-1 ring-brand-neon/50' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                title={isThinkingMode ? "Disable Thinking Mode" : "Enable Thinking Mode"}
+              >
+                <Brain className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={() => setIsOpen(false)}
+                className="p-2 text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
@@ -98,8 +129,9 @@ export const AIChat: React.FC = () => {
             ))}
             {loading && (
               <div className="flex justify-start">
-                 <div className="bg-slate-800 p-3 rounded-2xl rounded-tl-none border border-white/10">
+                 <div className="bg-slate-800 p-3 rounded-2xl rounded-tl-none border border-white/10 flex items-center gap-2">
                     <Loader className="w-4 h-4 animate-spin text-brand-neon" />
+                    {isThinkingMode && <span className="text-xs text-brand-neon animate-pulse">Thinking...</span>}
                  </div>
               </div>
             )}
@@ -114,7 +146,7 @@ export const AIChat: React.FC = () => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="Find me a cool case..."
+                placeholder={isThinkingMode ? "Ask a complex question..." : "Find me a cool case..."}
                 className="flex-1 bg-slate-900 border border-white/20 rounded-full px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-neon placeholder-gray-500"
               />
               <button
